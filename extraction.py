@@ -1,5 +1,6 @@
 import requests
 import json
+import concurrent.futures
 import time
 import logging
 
@@ -52,6 +53,9 @@ class Extraction:
                 if stats_data is None:
                     continue
                 else:
+                    result["order"] = stats_data["order"]
+                    result["height"] = stats_data["height"] / 10
+                    result["weight"] = stats_data["weight"] / 10
                     stats_data = {
                         stat["stat"]["name"]: stat["base_stat"]
                         for stat in stats_data["stats"]
