@@ -6,7 +6,9 @@ from typing import Optional, Dict, List, Any
 import logging
 
 logging.basicConfig(
-    level=logging.INFO, format=" %(asctime)s -  %(levelname)s -  %(message)s"
+    filename="logs/extraction.log",
+    level=logging.INFO,
+    format="%(asctime)s -  %(levelname)s -  %(message)s",
 )
 
 
@@ -60,6 +62,65 @@ class Extraction:
         with open("data/pokemon.json", "w", encoding="utf-8") as file:
             json.dump(data, file, indent=4)
 
+    def fetch_detailed_data(self, pokemon_urls: List[str]) -> List[Dict[str, Any]]:
+        """
+        Fetches detailed data for each Pokémon in the provided list of URLs.
+
+        Args:
+            pokemon_urls (List[str]): The list of URLs for the Pokémon.
+
+        Returns:
+            List[Dict]: The detailed data for each Pokémon.
+        """
+        with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+            return list(executor.map(self.api_call, pokemon_urls))
+
+    @staticmethod
+    def transform_data(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Transforms the provided data into the required format.
+
+        Args:
+            data (List[Dict]): The data to be transformed.
+
+        Returns:
+            List[Dict]: The transformed data.
+        """
+        return [
+            {
+                "id": pokemon["id"],
+                "order": pokemon["order"],
+                "name": pokemon["forms"][0]["name"],
+                "stats": {
+                    stat["stat"]["name"]: stat["base_stat"] for stat in pokemon["stats"]
+                },
+                "types": [item["type"]["name"] for item in pokemon["types"]],
+                "height": pokemon["height"] / 10,  # Decimeters to meters
+                "weight": pokemon["weight"] / 10,  # Decagrams to kilograms
+                "species": pokemon["species"]["name"],
+            }
+            for pokemon in data
+        ]
+
+    @staticmethod
+    def log_metadata(start_time, end_time) -> None:
+        """
+        Logs the metadata for the extraction process.
+
+        Args:
+            start_time (float): The time at which the extraction process started.
+            end_time (float): The time at which the extraction process ended.
+        """
+        logging.info(
+            f"Extraction process started at {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(start_time))}"
+        )
+        logging.info(
+            f"Extraction process ended at {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(end_time))}"
+        )
+        logging.info(
+            f"Extraction process time taken: {end_time - start_time} seconds\n"
+        )
+
     def extract_pokemon(self) -> None:
         """
         Extracts Pokémon data from the PokéAPI, transforms the data, and writes it to a JSON file.
@@ -74,41 +135,25 @@ class Extraction:
         results = []
 
         start_time = time.time()
-        logging.info(f"Start: {start_time}")
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
-            while url:
-                data = self.api_call(url)
+        while url:
+            data = self.api_call(url)
 
-                if data is None:
-                    logging.error("Error fetching data from API")
-                    break
+            if data is None:
+                logging.error("Error fetching data from API")
+                return
 
-                poke_data = data["results"]
-                stats = executor.map(self.api_call, [item["url"] for item in poke_data])
+            pokemon_urls = [pokemon["url"] for pokemon in data["results"]]
+            detailed_data = self.fetch_detailed_data(pokemon_urls)
+            transformed_data = self.transform_data(detailed_data)
+            logging.info(transformed_data)
+            results.extend(transformed_data)
 
-                for pokemon in stats:
-                    poke_info = {
-                        "id": pokemon["id"],
-                        "order": pokemon["order"],
-                        "name": pokemon["forms"][0]["name"],
-                        "stats": {
-                            stat["stat"]["name"]: stat["base_stat"]
-                            for stat in pokemon["stats"]
-                        },
-                        "types": [item["type"]["name"] for item in pokemon["types"]],
-                        "height": pokemon["height"] / 10,  # Decimeters to meters
-                        "weight": pokemon["weight"] / 10,  # Decagrams to kilograms
-                        "species": pokemon["species"]["name"],
-                    }
-                    logging.info(poke_info)
-                    results.append(poke_info)
-
-                url = data["next"]
+            url = data["next"]
 
         end_time = time.time()
-        logging.info(f"End: {end_time}")
-        logging.info(f"Execution Time: {end_time - start_time}")
+
+        self.log_metadata(start_time, end_time)
 
         self.write_data_to_file(results)
 
