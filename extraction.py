@@ -32,6 +32,7 @@ class Extraction:
             "pokemon": self.base_url + "pokemon-species/",
             "type": self.base_url + "type/",
             "move": self.base_url + "move/",
+            "ability": self.base_url + "ability/",
         }
 
     @staticmethod
@@ -185,6 +186,18 @@ class Extraction:
                 if type_class is not None
             ]
 
+        elif data_class == "ability":
+            return [
+                {
+                    "id": ability.get("id"),
+                    "name": ability.get("name"),
+                    "pokemon": [
+                        item["pokemon"]["name"] for item in ability.get("pokemon", [])
+                    ],
+                }
+                for ability in data
+            ]
+
     @staticmethod
     def log_metadata(
         start_time: float, end_time: float, data_class: str, count: int, api_count: int
@@ -233,7 +246,7 @@ class Extraction:
 
         start_time = time.time()
 
-        while url:
+        while url is not None:
             data = self.api_call(url)
 
             if data is None:
@@ -264,3 +277,7 @@ class Extraction:
         self.log_metadata(start_time, end_time, data_class, count, api_count)
 
         self.write_data_to_file(results, data_class)
+
+
+obj = Extraction()
+obj.extract_data("ability")
