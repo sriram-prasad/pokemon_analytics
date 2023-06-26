@@ -104,74 +104,85 @@ class Extraction:
         if data_class == "pokemon":
             return [
                 {
-                    "id": pokemon["id"],
-                    "order": pokemon["order"],
-                    "name": pokemon["forms"][0]["name"],
-                    # Iterates through stats dictionary in pokemon dict
+                    "id": pokemon.get("id"),
+                    "order": pokemon.get("order"),
+                    "name": pokemon.get("forms", [{}])[0].get("name"),
                     "stats": {
-                        stat["stat"]["name"]: stat["base_stat"]
-                        for stat in pokemon["stats"]
+                        stat.get("stat", {}).get("name"): stat.get("base_stat")
+                        for stat in pokemon.get("stats", [])
                     },
-                    "types": [item["type"]["name"] for item in pokemon["types"]],
-                    "height": pokemon["height"] / 10,  # Decimeters to meters
-                    "weight": pokemon["weight"] / 10,  # Decagrams to kilograms
-                    "species": pokemon["species"]["name"],
+                    "types": [
+                        item.get("type", {}).get("name")
+                        for item in pokemon.get("types", [])
+                    ],
+                    "height": pokemon.get("height", 0) / 10,  # Decimeters to meters
+                    "weight": pokemon.get("weight", 0) / 10,  # Decagrams to kilograms
+                    "species": pokemon.get("species", {}).get("name"),
                 }
                 for pokemon in data
+                if pokemon is not None
             ]
 
         elif data_class == "move":
             return [
                 {
-                    "id": move["id"],
-                    "name": move["name"],
-                    "power": move["power"],
-                    "pp": move["pp"],
-                    "type": move["type"]["name"],
-                    "class": move["damage_class"]["name"],
+                    "id": move.get("id"),
+                    "name": move.get("name"),
+                    "power": move.get("power"),
+                    "pp": move.get("pp"),
+                    "type": move.get("type", {}).get("name"),
+                    "class": move.get("damage_class", {}).get("name"),
                 }
                 for move in data
+                if move is not None
             ]
 
         elif data_class == "type":
             return [
                 {
-                    "id": type_class["id"],
-                    "name": type_class["name"],
+                    "id": type_class.get("id"),
+                    "name": type_class.get("name"),
                     "damage_relations": {
                         "double_damage_from": [
-                            item["name"]
-                            for item in type_class["damage_relations"][
-                                "double_damage_from"
-                            ]
+                            item.get("name")
+                            for item in type_class.get("damage_relations", {}).get(
+                                "double_damage_from", []
+                            )
                         ],
                         "double_damage_to": [
-                            item["name"]
-                            for item in type_class["damage_relations"][
-                                "double_damage_to"
-                            ]
+                            item.get("name")
+                            for item in type_class.get("damage_relations", {}).get(
+                                "double_damage_to", []
+                            )
                         ],
                         "half_damage_from": [
-                            item["name"]
-                            for item in type_class["damage_relations"][
-                                "half_damage_from"
-                            ]
+                            item.get("name")
+                            for item in type_class.get("damage_relations", {}).get(
+                                "half_damage_from", []
+                            )
                         ],
                         "half_damage_to": [
-                            item["name"]
-                            for item in type_class["damage_relations"]["half_damage_to"]
+                            item.get("name")
+                            for item in type_class.get("damage_relations", {}).get(
+                                "half_damage_to", []
+                            )
                         ],
                         "no_damage_from": [
-                            item["name"]
-                            for item in type_class["damage_relations"]["no_damage_from"]
+                            item.get("name")
+                            for item in type_class.get("damage_relations", {}).get(
+                                "no_damage_from", []
+                            )
                         ],
                         "no_damage_to": [
-                            item["name"]
-                            for item in type_class["damage_relations"]["no_damage_to"]
+                            item.get("name")
+                            for item in type_class.get("damage_relations", {}).get(
+                                "no_damage_to", []
+                            )
                         ],
                     },
                 }
                 for type_class in data
+                if type_class is not None
             ]
 
     @staticmethod
