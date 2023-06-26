@@ -53,3 +53,8 @@
 2023-06-26 22:37:02,762 -  INFO -  Extraction process time taken: 104.72953462600708 seconds
 2023-06-26 22:37:02,762 -  INFO -  Total number of Move extracted: 918 (Expected: 918)
 
+2023-06-27 00:42:30,406 -  INFO -  Extraction process started at 2023-06-27 00:41:42
+2023-06-27 00:42:30,410 -  INFO -  Extraction process ended at 2023-06-27 00:42:30
+2023-06-27 00:42:30,410 -  INFO -  Extraction process time taken: 48.21113348007202 seconds
+2023-06-27 00:42:30,410 -  INFO -  Total number of Ability extracted: 358 (Expected: 358)
+
