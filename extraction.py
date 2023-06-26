@@ -19,7 +19,8 @@ class Extraction:
     def __init__(self, endpoint) -> None:
         self.api_url = self.base_url + endpoint
 
-    def api_call(self, url):
+    @staticmethod
+    def api_call(url):
         try:
             response = requests.get(url)
             response.raise_for_status()
@@ -28,7 +29,8 @@ class Extraction:
             logging.error(f"Error fetching data from API: {e}")
             return None
 
-    def write_data_to_file(self, data):
+    @staticmethod
+    def write_data_to_file(data):
         with open("data/pokemon.json", "w", encoding="utf-8") as file:
             json.dump(data, file, indent=4)
 
@@ -42,30 +44,35 @@ class Extraction:
         start_time = time.time()
         logging.info(f"Start: {start_time}")
 
-        while url:
-            data = self.api_call(url)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+            while url:
+                data = self.api_call(url)
 
-            if data is None:
-                break
+                if data is None:
+                    logging.error("Error fetching data from API")
+                    break
 
-            for result in data["results"]:
-                stats_data = self.api_call(result["url"])
-                if stats_data is None:
-                    continue
-                else:
-                    result["order"] = stats_data["order"]
-                    result["height"] = stats_data["height"] / 10
-                    result["weight"] = stats_data["weight"] / 10
-                    stats_data = {
-                        stat["stat"]["name"]: stat["base_stat"]
-                        for stat in stats_data["stats"]
+                poke_data = data["results"]
+                stats = executor.map(self.api_call, [item["url"] for item in poke_data])
+
+                for pokemon in stats:
+                    poke_info = {
+                        "id": pokemon["id"],
+                        "order": pokemon["order"],
+                        "name": pokemon["forms"][0]["name"],
+                        "stats": {
+                            stat["stat"]["name"]: stat["base_stat"]
+                            for stat in pokemon["stats"]
+                        },
+                        "types": [item["type"]["name"] for item in pokemon["types"]],
+                        "height": pokemon["height"] / 10,  # Decimeters to meters
+                        "weight": pokemon["weight"] / 10,  # Decagrams to kilograms
+                        "species": pokemon["species"]["name"],
                     }
-                    result["stats"] = stats_data
-                    logging.info(result)
+                    logging.info(poke_info)
+                    results.append(poke_info)
 
-            results.extend(data["results"])
-
-            url = data.get("next")
+                url = data["next"]
 
         end_time = time.time()
         logging.info(f"End: {end_time}")
@@ -76,4 +83,3 @@ class Extraction:
 
 obj = Extraction("pokemon")
 obj.extract_pokemon()
-# obj.extract_stats()
