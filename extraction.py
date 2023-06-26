@@ -28,9 +28,11 @@ class Extraction:
         """
         Initialises the Extraction object with the complete API URL for the endpoint.
         """
-        self.pokemon_url = self.base_url + "pokemon-species/"
-        self.type_url = self.base_url + "type/"
-        self.move_url = self.base_url + "move/"
+        self.endpoints = {
+            "pokemon": self.base_url + "pokemon-species/",
+            "type": self.base_url + "type/",
+            "move": self.base_url + "move/",
+        }
 
     @staticmethod
     def api_call(url: str) -> Optional[Dict[str, Any]]:
@@ -61,17 +63,8 @@ class Extraction:
             data (List[Dict]): The data to be written to the file.
             data_class (str): The type of data to be written to the file.
         """
-        if data_class == "pokemon":
-            with open("data/pokemon.json", "w", encoding="utf-8") as file:
-                json.dump(data, file, indent=4)
-
-        elif data_class == "move":
-            with open("data/move.json", "w", encoding="utf-8") as file:
-                json.dump(data, file, indent=4)
-
-        elif data_class == "type":
-            with open("data/type_class.json", "w", encoding="utf-8") as file:
-                json.dump(data, file, indent=4)
+        with open(f"data/{data_class}.json", "w", encoding="utf-8") as file:
+            json.dump(data, file, indent=4)
 
     def fetch_detailed_data(self, urls: List[str]) -> List[Dict[str, Any]]:
         """
@@ -173,7 +166,7 @@ class Extraction:
             ]
 
     @staticmethod
-    def log_metadata(start_time, end_time, count, data_class) -> None:
+    def log_metadata(start_time, end_time, data_class, count, api_count) -> None:
         """
         Logs the metadata for the extraction process.
 
@@ -188,17 +181,11 @@ class Extraction:
             f"Extraction process ended at {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(end_time))}"
         )
         logging.info(f"Extraction process time taken: {end_time - start_time} seconds")
-        if data_class == "pokemon":
-            logging.info(
-                f"Total number of Pokemon extracted: {count} (Expected: 1010)\n"
-            )
-        elif data_class == "type":
-            logging.info(f"Total number of Types extracted: {count} (Expected: 20)\n")
+        logging.info(
+            f"Total number of {data_class.capitalize()} extracted: {count} (Expected: {api_count})\n"
+        )
 
-        elif data_class == "move":
-            logging.info(f"Total number of Moves extracted: {count} (Expected: 918)\n")
-
-    def extract_pokemon(self) -> None:
+    def extract_data(self, data_class: str) -> None:
         """
         Extracts Pokémon data from the PokéAPI, transforms the data, and writes it to a JSON file.
 
@@ -208,8 +195,9 @@ class Extraction:
 
         The entire extraction process, including the time it took, is logged.
         """
-        url = self.pokemon_url
+        url = self.endpoints[data_class]
         results = []
+        count = 0
 
         start_time = time.time()
 
@@ -220,83 +208,27 @@ class Extraction:
                 logging.error("Error fetching data from API")
                 return
 
-            pokemon_urls = [
-                re.sub("-species", "", pokemon["url"]) for pokemon in data["results"]
-            ]
-            detailed_data = self.fetch_detailed_data(pokemon_urls)
-            transformed_data = self.transform_data(detailed_data, "pokemon")
+            if data_class == "pokemon":
+                data_urls = [
+                    re.sub("-species", "", data_item["url"])
+                    for data_item in data["results"]
+                ]
+            else:
+                data_urls = [data_item["url"] for data_item in data["results"]]
+
+            detailed_data = self.fetch_detailed_data(data_urls)
+            transformed_data = self.transform_data(detailed_data, data_class)
             logging.debug(transformed_data)
             results.extend(transformed_data)
+
+            count += len(transformed_data)
 
             url = data["next"]
 
         end_time = time.time()
 
-        count = data["count"]
+        api_count = data["count"]
 
-        self.log_metadata(start_time, end_time, count, "pokemon")
+        self.log_metadata(start_time, end_time, data_class, count, api_count)
 
-        self.write_data_to_file(results, "pokemon")
-
-    def extract_types(self) -> None:
-        """
-        Extracts type data from the PokéAPI and writes it to a JSON file.
-        """
-        data = self.api_call(self.type_url)
-
-        if data is None:
-            logging.error("Error fetching data from API")
-            return
-
-        results = data["results"]
-
-        start_time = time.time()
-
-        type_urls = [type["url"] for type in results]
-
-        detailed_data = self.fetch_detailed_data(type_urls)
-        transformed_data = self.transform_data(detailed_data, "type")
-        logging.debug(transformed_data)
-
-        end_time = time.time()
-
-        count = data["count"]
-
-        self.log_metadata(start_time, end_time, count, "type")
-
-        self.write_data_to_file(transformed_data, "type")
-
-    def extract_moves(self) -> None:
-        """
-        Extracts move data from the PokéAPI and writes it to a JSON file.
-
-        The extraction is done in a paginated way, where each page contains multiple Pokémon.
-        For each move, detailed data is fetched asynchronously using a ThreadPoolExecutor for improved speed.
-        """
-        url = self.move_url
-        results = []
-
-        start_time = time.time()
-
-        while url:
-            data = self.api_call(url)
-
-            if data is None:
-                logging.error("Error fetching data from API")
-                return
-
-            move_urls = [move["url"] for move in data["results"]]
-            detailed_data = self.fetch_detailed_data(move_urls)
-            transformed_data = self.transform_data(detailed_data, "move")
-            logging.debug(transformed_data)
-            results.extend(transformed_data)
-
-            url = data["next"]
-
-        end_time = time.time()
-
-        count = data["count"]
-
-        self.log_metadata(start_time, end_time, count, "move")
-
-        self.write_data_to_file(results, "move")
+        self.write_data_to_file(results, data_class)
