@@ -38,7 +38,8 @@ class Extraction:
     def api_call(url: str) -> Optional[Dict[str, Any]]:
         """
         Makes a GET request to the specified API URL and returns the response as a JSON object.
-        In case of an HTTP error, it logs the exception and returns None.
+        In case of an HTTP error, it logs the exception and returns None. Possible reasons for None return value
+        include connection errors, timeout errors, and HTTP errors.
 
         Args:
             url (str): The API URL for the GET request.
@@ -51,13 +52,15 @@ class Extraction:
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
+            # Raises an error in the log file if the GET request fails
             logging.error(f"Error fetching data from API: {e}")
             return None
 
     @staticmethod
     def write_data_to_file(data: List[Dict[str, Any]], data_class: str) -> None:
         """
-        Writes the provided data into a JSON file.
+        Writes the provided data into a JSON file. The file will be created in the 'data' directory.
+        If the 'data' directory does not exist, it will cause a FileNotFoundError.
 
         Args:
             data (List[Dict]): The data to be written to the file.
@@ -66,29 +69,34 @@ class Extraction:
         with open(f"data/{data_class}.json", "w", encoding="utf-8") as file:
             json.dump(data, file, indent=4)
 
-    def fetch_detailed_data(self, urls: List[str]) -> List[Dict[str, Any]]:
+    def fetch_detailed_data(self, urls: List[str]) -> List[Optional[Dict[str, Any]]]:
         """
-        Fetches detailed data for each Pokémon in the provided list of URLs.
+        Fetches detailed data for each Pokémon, type, or move in the provided list of URLs.
+        It uses ThreadPoolExecutor to concurrently send multiple GET requests to improve the speed of data fetching.
 
         Args:
-            urls (List[str]): The list of URLs for the Pokémon.
+            urls (List[str]): The list of URLs for the Pokémon, type, or move.
 
         Returns:
-            List[Dict]: The detailed data for each Pokémon.
+            List[Optional[Dict]]: The detailed data for each Pokémon, type, or move.
         """
         with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
             return list(executor.map(self.api_call, urls))
 
     @staticmethod
     def transform_data(
-        data: List[Dict[str, Any]], data_class: str
+        data: List[Optional[Dict[str, Any]]], data_class: str
     ) -> List[Dict[str, Any]]:
         """
-        Transforms the provided data into the required format.
+        Transforms the provided data into the required format. Depending on the data_class,
+        different transformations are applied.
+        For 'pokemon', ID, order, name, stats, types, height, weight, and species is extracted.
+        For 'move', ID, name, power, pp, type, and class is extracted.
+        For 'type', data like ID, name, and damage relations is extracted.
 
         Args:
-            data (List[Dict]): The data to be transformed.
-            data_class (str): The type of data to be transformed.
+            data (List[Optional[Dict]]): The data to be transformed.
+            data_class (str): The type of data to be transformed. Can be "pokemon", "type", or "move".
 
         Returns:
             List[Dict]: The transformed data.
@@ -99,6 +107,7 @@ class Extraction:
                     "id": pokemon["id"],
                     "order": pokemon["order"],
                     "name": pokemon["forms"][0]["name"],
+                    # Iterates through stats dictionary in pokemon dict
                     "stats": {
                         stat["stat"]["name"]: stat["base_stat"]
                         for stat in pokemon["stats"]
@@ -166,13 +175,19 @@ class Extraction:
             ]
 
     @staticmethod
-    def log_metadata(start_time, end_time, data_class, count, api_count) -> None:
+    def log_metadata(
+        start_time: float, end_time: float, data_class: str, count: int, api_count: int
+    ) -> None:
         """
-        Logs the metadata for the extraction process.
+        Logs the metadata for the extraction process. The metadata includes the start and end times,
+        total time taken, total number of data items extracted, and the expected number of items.
 
         Args:
             start_time (float): The time at which the extraction process started.
             end_time (float): The time at which the extraction process ended.
+            data_class (str): The type of data that was extracted. Can be "pokemon", "type", or "move".
+            count (int): Total number of data items that were successfully extracted.
+            api_count (int): Expected number of items as per the API response.
         """
         logging.info(
             f"Extraction process started at {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(start_time))}"
@@ -187,13 +202,19 @@ class Extraction:
 
     def extract_data(self, data_class: str) -> None:
         """
-        Extracts Pokémon data from the PokéAPI, transforms the data, and writes it to a JSON file.
+        Extracts data for the specified class from the PokéAPI, transforms the data, and writes it to a JSON file.
+        The data class can be one of "pokemon", "type", or "move".
 
-        The extraction is done in a paginated way, where each page contains multiple Pokémon.
-        For each Pokémon, detailed data is fetched asynchronously using a ThreadPoolExecutor for improved speed.
-        The extracted data for each Pokémon includes its ID, order, name, stats, types, height, weight, and species.
+        The extraction is done in a paginated way, where each page contains multiple data items.
+        For each item, detailed data is fetched asynchronously using a ThreadPoolExecutor for improved speed.
+        The extracted data for each class will differ based on the `data_class`.
+
+        If an error occurs during data fetching from the API, the function logs the error and returns immediately.
 
         The entire extraction process, including the time it took, is logged.
+
+        Args:
+            data_class (str): The type of data to be extracted. Can be "pokemon", "type", or "move".
         """
         url = self.endpoints[data_class]
         results = []
