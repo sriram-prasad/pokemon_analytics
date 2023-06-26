@@ -2,6 +2,7 @@ import requests
 import json
 import concurrent.futures
 import time
+import re
 from typing import Optional, Dict, List, Any
 import logging
 
@@ -27,7 +28,7 @@ class Extraction:
         """
         Initialises the Extraction object with the complete API URL for the endpoint.
         """
-        self.pokemon_url = self.base_url + "pokemon/"
+        self.pokemon_url = self.base_url + "pokemon-species/"
         self.type_url = self.base_url + "type/"
 
     @staticmethod
@@ -154,7 +155,7 @@ class Extraction:
             ]
 
     @staticmethod
-    def log_metadata(start_time, end_time) -> None:
+    def log_metadata(start_time, end_time, count, data_class) -> None:
         """
         Logs the metadata for the extraction process.
 
@@ -168,9 +169,13 @@ class Extraction:
         logging.info(
             f"Extraction process ended at {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(end_time))}"
         )
-        logging.info(
-            f"Extraction process time taken: {end_time - start_time} seconds\n"
-        )
+        logging.info(f"Extraction process time taken: {end_time - start_time} seconds")
+        if data_class == "pokemon":
+            logging.info(
+                f"Total number of Pokemon extracted: {count} (Expected: 1010)\n"
+            )
+        elif data_class == "type":
+            logging.info(f"Total number of Types extracted: {count} (Expected: 20)\n")
 
     def extract_pokemon(self) -> None:
         """
@@ -182,6 +187,7 @@ class Extraction:
 
         The entire extraction process, including the time it took, is logged.
         """
+        count = 0
         url = self.pokemon_url
         results = []
 
@@ -194,19 +200,22 @@ class Extraction:
                 logging.error("Error fetching data from API")
                 return
 
-            pokemon_urls = [pokemon["url"] for pokemon in data["results"]]
+            pokemon_urls = [
+                re.sub("-species", "", pokemon["url"]) for pokemon in data["results"]
+            ]
             detailed_data = self.fetch_detailed_data(pokemon_urls)
             transformed_data = self.transform_data(detailed_data, "pokemon")
-            logging.info(transformed_data)
+            count += len(transformed_data)
+            logging.debug(transformed_data)
             results.extend(transformed_data)
 
             url = data["next"]
 
         end_time = time.time()
 
-        self.log_metadata(start_time, end_time)
+        self.log_metadata(start_time, end_time, count, "pokemon")
 
-        self.write_data_to_file(results)
+        self.write_data_to_file(results, "pokemon")
 
     def extract_types(self) -> None:
         """
@@ -226,15 +235,11 @@ class Extraction:
 
         detailed_data = self.fetch_detailed_data(type_urls)
         transformed_data = self.transform_data(detailed_data, "type")
-        logging.info(transformed_data)
+        count = len(transformed_data)
+        logging.debug(transformed_data)
 
         end_time = time.time()
 
-        self.log_metadata(start_time, end_time)
+        self.log_metadata(start_time, end_time, count, "type")
 
         self.write_data_to_file(transformed_data, "type")
-
-
-obj = Extraction()
-# obj.extract_pokemon()
-obj.extract_types()
