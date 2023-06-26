@@ -2,6 +2,7 @@ import requests
 import json
 import concurrent.futures
 import time
+from typing import Optional, Dict, List, Any
 import logging
 
 logging.basicConfig(
@@ -11,16 +12,35 @@ logging.basicConfig(
 
 class Extraction:
     """
-    This class is used to extract the data from the API
+    This class handles the extraction of Pokémon data from the PokéAPI.
+
+    Attributes:
+        api_url (str): The full API endpoint for the data extraction.
     """
 
-    base_url = "https://pokeapi.co/api/v2/"
+    base_url: str = "https://pokeapi.co/api/v2/"
 
-    def __init__(self, endpoint) -> None:
+    def __init__(self, endpoint: str) -> None:
+        """
+        Initialises the Extraction object with the complete API URL for the endpoint.
+
+        Args:
+            endpoint (str): The specific API endpoint for extraction.
+        """
         self.api_url = self.base_url + endpoint
 
     @staticmethod
-    def api_call(url):
+    def api_call(url: str) -> Optional[Dict[str, Any]]:
+        """
+        Makes a GET request to the specified API URL and returns the response as a JSON object.
+        In case of an HTTP error, it logs the exception and returns None.
+
+        Args:
+            url (str): The API URL for the GET request.
+
+        Returns:
+            Optional[Dict]: The response from the API converted into a JSON object, or None in case of an error.
+        """
         try:
             response = requests.get(url)
             response.raise_for_status()
@@ -30,13 +50,25 @@ class Extraction:
             return None
 
     @staticmethod
-    def write_data_to_file(data):
+    def write_data_to_file(data: List[Dict[str, Any]]) -> None:
+        """
+        Writes the provided data into a JSON file.
+
+        Args:
+            data (List[Dict]): The data to be written to the file.
+        """
         with open("data/pokemon.json", "w", encoding="utf-8") as file:
             json.dump(data, file, indent=4)
 
-    def extract_pokemon(self):
+    def extract_pokemon(self) -> None:
         """
-        This method is used to extract the data from the API
+        Extracts Pokémon data from the PokéAPI, transforms the data, and writes it to a JSON file.
+
+        The extraction is done in a paginated way, where each page contains multiple Pokémon.
+        For each Pokémon, detailed data is fetched asynchronously using a ThreadPoolExecutor for improved speed.
+        The extracted data for each Pokémon includes its ID, order, name, stats, types, height, weight, and species.
+
+        The entire extraction process, including the time it took, is logged.
         """
         url = self.api_url
         results = []
