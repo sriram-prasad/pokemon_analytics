@@ -17,19 +17,18 @@ class Extraction:
     This class handles the extraction of Pokémon data from the PokéAPI.
 
     Attributes:
-        api_url (str): The full API endpoint for the data extraction.
+        pokemon_url (str): The full API endpoint for the data extraction of pokemons.
+        type_url (str): The full API endpoint for the data extraction of types.
     """
 
     base_url: str = "https://pokeapi.co/api/v2/"
 
-    def __init__(self, endpoint: str) -> None:
+    def __init__(self) -> None:
         """
         Initialises the Extraction object with the complete API URL for the endpoint.
-
-        Args:
-            endpoint (str): The specific API endpoint for extraction.
         """
-        self.api_url = self.base_url + endpoint
+        self.pokemon_url = self.base_url + "pokemon/"
+        self.type_url = self.base_url + "type/"
 
     @staticmethod
     def api_call(url: str) -> Optional[Dict[str, Any]]:
@@ -52,55 +51,107 @@ class Extraction:
             return None
 
     @staticmethod
-    def write_data_to_file(data: List[Dict[str, Any]]) -> None:
+    def write_data_to_file(data: List[Dict[str, Any]], data_class: str) -> None:
         """
         Writes the provided data into a JSON file.
 
         Args:
             data (List[Dict]): The data to be written to the file.
+            data_class (str): The type of data to be written to the file.
         """
-        with open("data/pokemon.json", "w", encoding="utf-8") as file:
-            json.dump(data, file, indent=4)
+        if data_class == "pokemon":
+            with open("data/pokemon.json", "w", encoding="utf-8") as file:
+                json.dump(data, file, indent=4)
 
-    def fetch_detailed_data(self, pokemon_urls: List[str]) -> List[Dict[str, Any]]:
+        elif data_class == "type":
+            with open("data/type_class.json", "w", encoding="utf-8") as file:
+                json.dump(data, file, indent=4)
+
+    def fetch_detailed_data(self, urls: List[str]) -> List[Dict[str, Any]]:
         """
         Fetches detailed data for each Pokémon in the provided list of URLs.
 
         Args:
-            pokemon_urls (List[str]): The list of URLs for the Pokémon.
+            urls (List[str]): The list of URLs for the Pokémon.
 
         Returns:
             List[Dict]: The detailed data for each Pokémon.
         """
         with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
-            return list(executor.map(self.api_call, pokemon_urls))
+            return list(executor.map(self.api_call, urls))
 
     @staticmethod
-    def transform_data(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def transform_data(
+        data: List[Dict[str, Any]], data_class: str
+    ) -> List[Dict[str, Any]]:
         """
         Transforms the provided data into the required format.
 
         Args:
             data (List[Dict]): The data to be transformed.
+            data_class (str): The type of data to be transformed.
 
         Returns:
             List[Dict]: The transformed data.
         """
-        return [
-            {
-                "id": pokemon["id"],
-                "order": pokemon["order"],
-                "name": pokemon["forms"][0]["name"],
-                "stats": {
-                    stat["stat"]["name"]: stat["base_stat"] for stat in pokemon["stats"]
-                },
-                "types": [item["type"]["name"] for item in pokemon["types"]],
-                "height": pokemon["height"] / 10,  # Decimeters to meters
-                "weight": pokemon["weight"] / 10,  # Decagrams to kilograms
-                "species": pokemon["species"]["name"],
-            }
-            for pokemon in data
-        ]
+        if data_class == "pokemon":
+            return [
+                {
+                    "id": pokemon["id"],
+                    "order": pokemon["order"],
+                    "name": pokemon["forms"][0]["name"],
+                    "stats": {
+                        stat["stat"]["name"]: stat["base_stat"]
+                        for stat in pokemon["stats"]
+                    },
+                    "types": [item["type"]["name"] for item in pokemon["types"]],
+                    "height": pokemon["height"] / 10,  # Decimeters to meters
+                    "weight": pokemon["weight"] / 10,  # Decagrams to kilograms
+                    "species": pokemon["species"]["name"],
+                }
+                for pokemon in data
+            ]
+
+        elif data_class == "type":
+            return [
+                {
+                    "id": type_class["id"],
+                    "name": type_class["name"],
+                    "damage_relations": {
+                        "double_damage_from": [
+                            item["name"]
+                            for item in type_class["damage_relations"][
+                                "double_damage_from"
+                            ]
+                        ],
+                        "double_damage_to": [
+                            item["name"]
+                            for item in type_class["damage_relations"][
+                                "double_damage_to"
+                            ]
+                        ],
+                        "half_damage_from": [
+                            item["name"]
+                            for item in type_class["damage_relations"][
+                                "half_damage_from"
+                            ]
+                        ],
+                        "half_damage_to": [
+                            item["name"]
+                            for item in type_class["damage_relations"]["half_damage_to"]
+                        ],
+                        "no_damage_from": [
+                            item["name"]
+                            for item in type_class["damage_relations"]["no_damage_from"]
+                        ],
+                        "no_damage_to": [
+                            item["name"]
+                            for item in type_class["damage_relations"]["no_damage_to"]
+                        ],
+                    },
+                }
+                for type_class in data
+            ]
 
     @staticmethod
     def log_metadata(start_time, end_time) -> None:
@@ -131,7 +182,7 @@ class Extraction:
 
         The entire extraction process, including the time it took, is logged.
         """
-        url = self.api_url
+        url = self.pokemon_url
         results = []
 
         start_time = time.time()
@@ -145,7 +196,7 @@ class Extraction:
 
             pokemon_urls = [pokemon["url"] for pokemon in data["results"]]
             detailed_data = self.fetch_detailed_data(pokemon_urls)
-            transformed_data = self.transform_data(detailed_data)
+            transformed_data = self.transform_data(detailed_data, "pokemon")
             logging.info(transformed_data)
             results.extend(transformed_data)
 
@@ -157,6 +208,33 @@ class Extraction:
 
         self.write_data_to_file(results)
 
+    def extract_types(self) -> None:
+        """
+        Extracts type data from the PokéAPI and writes it to a JSON file.
+        """
+        data = self.api_call(self.type_url)
 
-obj = Extraction("pokemon")
-obj.extract_pokemon()
+        if data is None:
+            logging.error("Error fetching data from API")
+            return
+
+        results = data["results"]
+
+        start_time = time.time()
+
+        type_urls = [type["url"] for type in results]
+
+        detailed_data = self.fetch_detailed_data(type_urls)
+        transformed_data = self.transform_data(detailed_data, "type")
+        logging.info(transformed_data)
+
+        end_time = time.time()
+
+        self.log_metadata(start_time, end_time)
+
+        self.write_data_to_file(transformed_data, "type")
+
+
+obj = Extraction()
+# obj.extract_pokemon()
+obj.extract_types()
