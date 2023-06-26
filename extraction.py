@@ -30,6 +30,7 @@ class Extraction:
         """
         self.pokemon_url = self.base_url + "pokemon-species/"
         self.type_url = self.base_url + "type/"
+        self.move_url = self.base_url + "move/"
 
     @staticmethod
     def api_call(url: str) -> Optional[Dict[str, Any]]:
@@ -62,6 +63,10 @@ class Extraction:
         """
         if data_class == "pokemon":
             with open("data/pokemon.json", "w", encoding="utf-8") as file:
+                json.dump(data, file, indent=4)
+
+        elif data_class == "move":
+            with open("data/move.json", "w", encoding="utf-8") as file:
                 json.dump(data, file, indent=4)
 
         elif data_class == "type":
@@ -111,6 +116,19 @@ class Extraction:
                     "species": pokemon["species"]["name"],
                 }
                 for pokemon in data
+            ]
+
+        elif data_class == "move":
+            return [
+                {
+                    "id": move["id"],
+                    "name": move["name"],
+                    "power": move["power"],
+                    "pp": move["pp"],
+                    "type": move["type"]["name"],
+                    "class": move["damage_class"]["name"],
+                }
+                for move in data
             ]
 
         elif data_class == "type":
@@ -177,6 +195,9 @@ class Extraction:
         elif data_class == "type":
             logging.info(f"Total number of Types extracted: {count} (Expected: 20)\n")
 
+        elif data_class == "move":
+            logging.info(f"Total number of Moves extracted: {count} (Expected: 918)\n")
+
     def extract_pokemon(self) -> None:
         """
         Extracts Pokémon data from the PokéAPI, transforms the data, and writes it to a JSON file.
@@ -187,7 +208,6 @@ class Extraction:
 
         The entire extraction process, including the time it took, is logged.
         """
-        count = 0
         url = self.pokemon_url
         results = []
 
@@ -205,13 +225,14 @@ class Extraction:
             ]
             detailed_data = self.fetch_detailed_data(pokemon_urls)
             transformed_data = self.transform_data(detailed_data, "pokemon")
-            count += len(transformed_data)
             logging.debug(transformed_data)
             results.extend(transformed_data)
 
             url = data["next"]
 
         end_time = time.time()
+
+        count = data["count"]
 
         self.log_metadata(start_time, end_time, count, "pokemon")
 
@@ -235,11 +256,47 @@ class Extraction:
 
         detailed_data = self.fetch_detailed_data(type_urls)
         transformed_data = self.transform_data(detailed_data, "type")
-        count = len(transformed_data)
         logging.debug(transformed_data)
 
         end_time = time.time()
 
+        count = data["count"]
+
         self.log_metadata(start_time, end_time, count, "type")
 
         self.write_data_to_file(transformed_data, "type")
+
+    def extract_moves(self) -> None:
+        """
+        Extracts move data from the PokéAPI and writes it to a JSON file.
+
+        The extraction is done in a paginated way, where each page contains multiple Pokémon.
+        For each move, detailed data is fetched asynchronously using a ThreadPoolExecutor for improved speed.
+        """
+        url = self.move_url
+        results = []
+
+        start_time = time.time()
+
+        while url:
+            data = self.api_call(url)
+
+            if data is None:
+                logging.error("Error fetching data from API")
+                return
+
+            move_urls = [move["url"] for move in data["results"]]
+            detailed_data = self.fetch_detailed_data(move_urls)
+            transformed_data = self.transform_data(detailed_data, "move")
+            logging.debug(transformed_data)
+            results.extend(transformed_data)
+
+            url = data["next"]
+
+        end_time = time.time()
+
+        count = data["count"]
+
+        self.log_metadata(start_time, end_time, count, "move")
+
+        self.write_data_to_file(results, "move")

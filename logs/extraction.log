@@ -8,3 +8,18 @@
 2023-06-26 20:20:21,110 -  INFO -  Extraction process time taken: 1.0093457698822021 seconds
 2023-06-26 20:20:21,110 -  INFO -  Total number of Types extracted: 20 (Expected: 20)
 
+2023-06-26 20:52:49,910 -  INFO -  Extraction process started at 2023-06-26 20:51:09
+2023-06-26 20:52:49,913 -  INFO -  Extraction process ended at 2023-06-26 20:52:49
+2023-06-26 20:52:49,913 -  INFO -  Extraction process time taken: 100.31818723678589 seconds
+2023-06-26 20:52:49,914 -  INFO -  Total number of Pokemon extracted: 1010 (Expected: 1010)
+
+2023-06-26 20:55:01,099 -  INFO -  Extraction process started at 2023-06-26 20:52:50
+2023-06-26 20:55:01,099 -  INFO -  Extraction process ended at 2023-06-26 20:55:01
+2023-06-26 20:55:01,099 -  INFO -  Extraction process time taken: 130.26774835586548 seconds
+2023-06-26 20:55:01,100 -  INFO -  Total number of Moves extracted: 918 (Expected: 918)
+
+2023-06-26 20:55:03,137 -  INFO -  Extraction process started at 2023-06-26 20:55:02
+2023-06-26 20:55:03,137 -  INFO -  Extraction process ended at 2023-06-26 20:55:03
+2023-06-26 20:55:03,137 -  INFO -  Extraction process time taken: 1.0469272136688232 seconds
+2023-06-26 20:55:03,138 -  INFO -  Total number of Types extracted: 20 (Expected: 20)
+

@@ -4,6 +4,7 @@ from extraction import Extraction
 def main():
     ext_obj = Extraction()
     ext_obj.extract_pokemon()
+    ext_obj.extract_moves()
     ext_obj.extract_types()
 
 
