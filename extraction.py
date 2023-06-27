@@ -116,6 +116,9 @@ class Extraction:
                         item.get("type", {}).get("name")
                         for item in pokemon.get("types", [])
                     ],
+                    "moves": [
+                        item["move"]["name"] for item in pokemon.get("moves", [])
+                    ],
                     "height": pokemon.get("height", 0) / 10,  # Decimeters to meters
                     "weight": pokemon.get("weight", 0) / 10,  # Decagrams to kilograms
                     "species": pokemon.get("species", {}).get("name"),
