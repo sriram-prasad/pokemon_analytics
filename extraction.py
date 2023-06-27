@@ -280,7 +280,3 @@ class Extraction:
         self.log_metadata(start_time, end_time, data_class, count, api_count)
 
         self.write_data_to_file(results, data_class)
-
-
-obj = Extraction()
-obj.extract_data("ability")
