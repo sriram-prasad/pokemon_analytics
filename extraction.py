@@ -122,6 +122,10 @@ class Extraction:
                     "height": pokemon.get("height", 0) / 10,  # Decimeters to meters
                     "weight": pokemon.get("weight", 0) / 10,  # Decagrams to kilograms
                     "species": pokemon.get("species", {}).get("name"),
+                    "game_indices": [
+                        item["version"]["name"]
+                        for item in pokemon.get("game_indices", [])
+                    ],
                 }
                 for pokemon in data
                 if pokemon is not None
