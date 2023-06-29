@@ -103,3 +103,8 @@
 2023-06-27 14:16:26,260 -  INFO -  Extraction process time taken: 40.12450194358826 seconds
 2023-06-27 14:16:26,260 -  INFO -  Total number of Ability extracted: 358 (Expected: 358)
 
+2023-06-29 11:52:24,183 -  INFO -  Extraction process started at 2023-06-29 11:48:46
+2023-06-29 11:52:24,184 -  INFO -  Extraction process ended at 2023-06-29 11:52:24
+2023-06-29 11:52:24,184 -  INFO -  Extraction process time taken: 217.57677388191223 seconds
+2023-06-29 11:52:24,184 -  INFO -  Total number of Item extracted: 2050 (Expected: 2050)
+

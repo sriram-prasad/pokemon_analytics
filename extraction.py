@@ -33,6 +33,7 @@ class Extraction:
             "type": self.base_url + "type/",
             "move": self.base_url + "move/",
             "ability": self.base_url + "ability/",
+            "item": self.base_url + "item/",
         }
 
     @staticmethod
@@ -94,10 +95,13 @@ class Extraction:
         For 'pokemon', ID, order, name, stats, types, height, weight, and species is extracted.
         For 'move', ID, name, power, pp, type, and class is extracted.
         For 'type', data like ID, name, and damage relations is extracted.
+        For 'ability', ID, name, and effect is extracted.
+        For 'item', ID, name, and effect is extracted.
 
         Args:
             data (List[Optional[Dict]]): The data to be transformed.
-            data_class (str): The type of data to be transformed. Can be "pokemon", "type", or "move".
+            data_class (str): The type of data to be transformed.
+            Can be "pokemon", "type", "move", "ability" or "item".
 
         Returns:
             List[Dict]: The transformed data.
@@ -205,6 +209,16 @@ class Extraction:
                 for ability in data
             ]
 
+        elif data_class == "item":
+            return [
+                {
+                    "id": item.get("id"),
+                    "name": item.get("name"),
+                    "category": item.get("category", {}).get("name", []),
+                }
+                for item in data
+            ]
+
     @staticmethod
     def log_metadata(
         start_time: float, end_time: float, data_class: str, count: int, api_count: int
@@ -245,7 +259,8 @@ class Extraction:
         The entire extraction process, including the time it took, is logged.
 
         Args:
-            data_class (str): The type of data to be extracted. Can be "pokemon", "type", or "move".
+            data_class (str): The type of data to be extracted.
+            Can be "pokemon", "type", "move", "ability" or "item".
         """
         url = self.endpoints[data_class]
         results = []
